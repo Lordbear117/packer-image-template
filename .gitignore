@@ -1,0 +1,26 @@
+# Node.js dependencies
+node_modules/
+
+# Packer cache
+packer_cache/
+
+# AWS credentials
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.vscode/
+.idea/
+
+auto_deploy_template/

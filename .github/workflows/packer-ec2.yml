@@ -1,0 +1,49 @@
+name: Build and Deploy EC2 Instance with Packer and GitHub Actions
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-ami:
+    runs-on: ubuntu-latest
+    environment: aws
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install Packer
+      uses: hashicorp/setup-packer@v2
+      with:
+        version: latest
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Build AMI with Packer
+      run: packer build template_automatic.pkr.hcl
+
+  deploy-ec2:
+    needs: build-ami
+    runs-on: ubuntu-latest
+    environment: aws
+
+    steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Launch EC2 Instance
+      run: |
+        AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
+        DEFAULT_SUBNET=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text)
+        aws ec2 run-instances --image-id $AMI_ID --instance-type t2.micro --key-name ${{ secrets.EC2KEY }} --security-group-ids {{ secrets.SG_PACKER }} --subnet-id $DEFAULT_SUBNET --region us-east-1 --associate-public-ip-address --output json
