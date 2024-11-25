@@ -62,7 +62,7 @@ jobs:
           else
             echo "No se encontró una instancia existente con el nombre '$INSTANCE_NAME'. Lanzando una nueva..."
           fi
-
+ 
       - name: Launch EC2 Instance
         run: |
           AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
