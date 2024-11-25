@@ -26,6 +26,11 @@ jobs:
 #           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 #           aws-region: us-east-1
 
+        # - id: 'auth'
+        #   uses: 'google-github-actions/auth@v2'
+        #   with:
+        #        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
 #       - name: Set up Google Cloud Credentials
 #         uses: google-github-actions/setup-gcloud@v3
 #         with:
@@ -91,57 +96,57 @@ jobs:
 
           echo "La IP externa de la instancia de Google Cloud es: $EXTERNAL_IP"
 
-#   deploy-instance-aws:
-#     needs: build-images
-#     runs-on: ubuntu-latest
-#     environment: aws
+  deploy-instance-aws:
+    #needs: build-images
+    runs-on: ubuntu-latest
+    environment: aws
 
-#     steps:
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#           aws-region: us-east-1
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-#       - name: Install jq
-#         run: sudo apt-get install jq -y
+      - name: Install jq
+        run: sudo apt-get install jq -y
 
-#       - name: Check and Terminate Existing EC2 Instance
-#         run: |
-#           INSTANCE_NAME="Packer Instance-$(date +%Y%m%d)"
-#           INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=$INSTANCE_NAME" --query "Reservations[0].Instances[0].InstanceId" --output text)
+      - name: Check and Terminate Existing EC2 Instance
+        run: |
+          INSTANCE_NAME="Packer Instance-$(date +%Y%m%d)"
+          INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=$INSTANCE_NAME" --query "Reservations[0].Instances[0].InstanceId" --output text)
 
-#           if [ "$INSTANCE_ID" != "None" ]; then
-#             echo "La instancia con el nombre '$INSTANCE_NAME' ya existe, deteniendo y eliminando..."
-#             # Detener y eliminar la instancia existente
-#             aws ec2 terminate-instances --instance-ids $INSTANCE_ID
-#             aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID
-#             echo "Instancia terminada y eliminada."
-#           else
-#             echo "No se encontró una instancia existente con el nombre '$INSTANCE_NAME'. Lanzando una nueva..."
-#           fi
+          if [ "$INSTANCE_ID" != "None" ]; then
+            echo "La instancia con el nombre '$INSTANCE_NAME' ya existe, deteniendo y eliminando..."
+            # Detener y eliminar la instancia existente
+            aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+            aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID
+            echo "Instancia terminada y eliminada."
+          else
+            echo "No se encontró una instancia existente con el nombre '$INSTANCE_NAME'. Lanzando una nueva..."
+          fi
 
-#       - name: Launch EC2 Instance
-#         run: |
-#           # Obtener la ID de la imagen de AWS
-#           AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
-#           DEFAULT_SUBNET=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text)
+      - name: Launch EC2 Instance
+        run: |
+          # Obtener la ID de la imagen de AWS
+          AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
+          DEFAULT_SUBNET=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text)
 
-#           INSTANCE_NAME="Packer Instance-$(date +%Y%m%d)"  # Nombre único para la nueva instancia
+          INSTANCE_NAME="Packer Instance-$(date +%Y%m%d)"  # Nombre único para la nueva instancia
 
-#           # Lanzar la nueva instancia EC2 con el nombre único
-#           INSTANCE_DETAILS=$(aws ec2 run-instances --image-id $AMI_ID --instance-type t2.micro --key-name ${{ secrets.EC2KEY }} --security-group-ids ${{ secrets.SG_PACKER }} --subnet-id $DEFAULT_SUBNET --region us-east-1 --associate-public-ip-address --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" --output json)
+          # Lanzar la nueva instancia EC2 con el nombre único
+          INSTANCE_DETAILS=$(aws ec2 run-instances --image-id $AMI_ID --instance-type t2.micro --key-name ${{ secrets.EC2KEY }} --security-group-ids ${{ secrets.SG_PACKER }} --subnet-id $DEFAULT_SUBNET --region us-east-1 --associate-public-ip-address --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" --output json)
 
-#           # Obtener el ID de la instancia
-#           INSTANCE_ID=$(echo $INSTANCE_DETAILS | jq -r '.Instances[0].InstanceId')
-#           echo "La instancia EC2 ha sido lanzada con ID: $INSTANCE_ID"
+          # Obtener el ID de la instancia
+          INSTANCE_ID=$(echo $INSTANCE_DETAILS | jq -r '.Instances[0].InstanceId')
+          echo "La instancia EC2 ha sido lanzada con ID: $INSTANCE_ID"
 
-#           # Esperar a que la instancia esté en estado 'running'
-#           aws ec2 wait instance-running --instance-ids $INSTANCE_ID
-#           echo "La instancia está en estado 'running'."
+          # Esperar a que la instancia esté en estado 'running'
+          aws ec2 wait instance-running --instance-ids $INSTANCE_ID
+          echo "La instancia está en estado 'running'."
 
-#           # Obtener la IP pública de la instancia
-#           PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+          # Obtener la IP pública de la instancia
+          PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
 
-#           echo "La IP pública de la instancia EC2 es: $PUBLIC_IP"
+          echo "La IP pública de la instancia EC2 es: $PUBLIC_IP"
