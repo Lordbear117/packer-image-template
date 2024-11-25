@@ -68,6 +68,8 @@ jobs:
           # Obtener el nombre de la imagen más reciente creada por Packer
           IMAGE_NAME=$(gcloud compute images list --filter="name~'packer-*'" --format="value(name)" --sort-by="~creationTimestamp" | head -n 1)
 
+          PROJECT_ID=$(gcloud config get-value project)
+
           INSTANCE_NAME="Packer-Instance-$(date +%Y%m%d)"
 
           # Lanzar la nueva instancia de Google Cloud
