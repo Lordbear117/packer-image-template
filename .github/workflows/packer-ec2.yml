@@ -3,7 +3,7 @@ name: Build and Deploy EC2 Instance with Packer and GitHub Actions
 on:
   push:
     branches:
-      - main
+      - niam
 
 jobs:
   build-ami:
