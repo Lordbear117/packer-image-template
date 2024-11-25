@@ -50,6 +50,12 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Check gcloud configuration
+        run: |
+            gcloud auth list
+            gcloud config list
+            gcloud compute images list
+
       - name: Install jq
         run: sudo apt-get install jq -y
 
