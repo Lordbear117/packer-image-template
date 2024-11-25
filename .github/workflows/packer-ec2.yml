@@ -26,6 +26,9 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
+    - name: Init Packer
+      run: packer init template_automatic.pkr.hcl
+
     - name: Build AMI with Packer
       run: packer build template_automatic.pkr.hcl
 
