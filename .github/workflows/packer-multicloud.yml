@@ -6,61 +6,58 @@ on:
       - develop
 
 jobs:
-#   build-images:
-#     runs-on: ubuntu-latest
-#     environment: aws
-
-#     steps:
-#       - name: Checkout Code
-#         uses: actions/checkout@v3
-
-#       - name: Install Packer
-#         uses: hashicorp/setup-packer@v2
-#         with:
-#           version: latest
-
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v3
-#         with:
-#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#           aws-region: us-east-1
-
-        # - id: 'auth'
-        #   uses: 'google-github-actions/auth@v2'
-        #   with:
-        #        credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-#       - name: Set up Google Cloud Credentials
-#         uses: google-github-actions/setup-gcloud@v3
-#         with:
-#           service_account_key: ${{ secrets.GCP_SA_KEY }}
-#           project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-#       - name: Init Packer for Multicloud
-#         run: packer init template_multicloud.pkr.hcl
-
-#       - name: Build Images for AWS and Google Cloud
-#         run: packer build template_multicloud.pkr.hcl
-
-  deploy-instance-google:
-    # needs: build-images
+  build-images:
     runs-on: ubuntu-latest
     environment: aws
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+      - name: Install Packer
+        uses: hashicorp/setup-packer@v2
         with:
-            credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          version: latest
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: Set up Google Cloud Credentials
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Init Packer for Multicloud
+        run: packer init template_multicloud.pkr.hcl
+
+      - name: Build Images for AWS and Google Cloud
+        run: packer build template_multicloud.pkr.hcl
+
+  deploy-instance-google:
+    needs: build-images
+    runs-on: ubuntu-latest
+    environment: aws
+
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
 
       - name: Set up Google Cloud Credentials
         uses: google-github-actions/setup-gcloud@v2
         with:
-            project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
         #   service_account_key: ${{ secrets.GCP_SA_KEY }}
-        
 
       - name: Install jq
         run: sudo apt-get install jq -y
@@ -97,7 +94,7 @@ jobs:
           echo "La IP externa de la instancia de Google Cloud es: $EXTERNAL_IP"
 
   deploy-instance-aws:
-    #needs: build-images
+    needs: build-images
     runs-on: ubuntu-latest
     environment: aws
 
