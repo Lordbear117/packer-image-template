@@ -6,34 +6,34 @@ on:
       - main
 
 jobs:
-  # build-ami:
-  #   runs-on: ubuntu-latest
-  #   environment: aws
+  build-ami:
+    runs-on: ubuntu-latest
+    environment: aws
 
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v3
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-  #     - name: Install Packer
-  #       uses: hashicorp/setup-packer@v2
-  #       with:
-  #         version: latest
+      - name: Install Packer
+        uses: hashicorp/setup-packer@v2
+        with:
+          version: latest
 
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v3
-  #       with:
-  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws-region: us-east-1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-  #     - name: Init Packer
-  #       run: packer init template_automatic.pkr.hcl
+      - name: Init Packer
+        run: packer init template_automatic.pkr.hcl
 
-  #     - name: Build AMI with Packer
-  #       run: packer build template_automatic.pkr.hcl
+      - name: Build AMI with Packer
+        run: packer build template_automatic.pkr.hcl
 
   deploy-ec2:
-    # needs: build-ami
+    needs: build-ami
     runs-on: ubuntu-latest
     environment: aws
 
@@ -62,7 +62,7 @@ jobs:
           else
             echo "No se encontró una instancia existente con el nombre '$INSTANCE_NAME'. Lanzando una nueva..."
           fi
- 
+
       - name: Launch EC2 Instance
         run: |
           AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
