@@ -45,6 +45,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Install jq
+        run: sudo apt-get install jq -y
+
       - name: Check and Terminate Existing EC2 Instance
         run: |
           INSTANCE_NAME="Packer Instance"
