@@ -50,7 +50,7 @@ jobs:
 
       - name: Check and Terminate Existing EC2 Instance
         run: |
-          INSTANCE_NAME="Packer Instance"
+          INSTANCE_NAME="Packer Instance-$(date +%Y%m%d)"
           INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=$INSTANCE_NAME" --query "Reservations[0].Instances[0].InstanceId" --output text)
 
           if [ "$INSTANCE_ID" != "None" ]; then
@@ -68,14 +68,20 @@ jobs:
           AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
           DEFAULT_SUBNET=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text)
 
-          INSTANCE_NAME="Packer Instance-$(date +%Y%m%d%H%M%S)"  # Nombre único para la nueva instancia
+          INSTANCE_NAME="Packer Instance-$(date +%Y%m%d)"  # Nombre único para la nueva instancia
 
           # Lanzar la nueva instancia EC2 con el nombre único
           INSTANCE_DETAILS=$(aws ec2 run-instances --image-id $AMI_ID --instance-type t2.micro --key-name ${{ secrets.EC2KEY }} --security-group-ids ${{ secrets.SG_PACKER }} --subnet-id $DEFAULT_SUBNET --region us-east-1 --associate-public-ip-address --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" --output json)
 
-          # Obtener el ID de la instancia y la IP pública
+          # Obtener el ID de la instancia
           INSTANCE_ID=$(echo $INSTANCE_DETAILS | jq -r '.Instances[0].InstanceId')
-          PUBLIC_IP=$(echo $INSTANCE_DETAILS | jq -r '.Instances[0].PublicIpAddress')
-
           echo "La instancia EC2 ha sido lanzada con ID: $INSTANCE_ID"
+
+          # Esperar a que la instancia esté en estado 'running'
+          aws ec2 wait instance-running --instance-ids $INSTANCE_ID
+          echo "La instancia está en estado 'running'."
+
+          # Obtener la IP pública de la instancia
+          PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+
           echo "La IP pública de la instancia es: $PUBLIC_IP"
