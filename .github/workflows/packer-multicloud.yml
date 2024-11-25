@@ -70,7 +70,7 @@ jobs:
 
           PROJECT_ID=$(gcloud config get-value project)
 
-          INSTANCE_NAME="packer-Instance-$(date +%Y%m%d)"
+          INSTANCE_NAME="packer-instance-$(date +%Y%m%d)"
 
           # Lanzar la nueva instancia de Google Cloud
           gcloud compute instances create $INSTANCE_NAME \
