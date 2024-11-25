@@ -1,12 +1,12 @@
-name: Build and Deploy EC2 Instance with Packer and GitHub Actions
+name: Build and Deploy EC2 and Google Cloud VM with Packer
 
 on:
   push:
     branches:
-      - naim
+      - main
 
 jobs:
-  build-ami:
+  build-images:
     runs-on: ubuntu-latest
     environment: aws
 
@@ -26,14 +26,74 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Init Packer
-        run: packer init template_automatic.pkr.hcl
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
 
-      - name: Build AMI with Packer
-        run: packer build template_automatic.pkr.hcl
+      - name: Set up Google Cloud Credentials
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-  deploy-ec2:
-    needs: build-ami
+      - name: Init Packer for Multicloud
+        run: packer init template_multicloud.pkr.hcl
+
+      - name: Build Images for AWS and Google Cloud
+        run: packer build template_multicloud.pkr.hcl
+
+  deploy-instance-google:
+    needs: build-images
+    runs-on: ubuntu-latest
+    environment: aws
+
+    steps:
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: Set up Google Cloud Credentials
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Install jq
+        run: sudo apt-get install jq -y
+
+      - name: Set Google Cloud Project
+        run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Launch Google Compute Engine Instance
+        run: |
+          # Obtener el nombre de la imagen más reciente creada por Packer
+          IMAGE_NAME=$(gcloud compute images list --filter="name~'packer-*'" --format="value(name)" --sort-by="~creationTimestamp" | head -n 1)
+
+          PROJECT_ID=$(gcloud config get-value project)
+
+          INSTANCE_NAME="packer-instance-$(date +%Y%m%d)"
+
+          # Lanzar la nueva instancia de Google Cloud
+          gcloud compute instances create $INSTANCE_NAME \
+            --image=$IMAGE_NAME \
+            --image-project=$PROJECT_ID \
+            --zone=us-central1-a \
+            --machine-type=n1-standard-1 \
+            --tags=http-server,https-server \
+            --metadata=startup-script='#!/bin/bash echo "Startup script running!"' \
+            --project=$PROJECT_ID
+
+          echo "Instancia de Google Cloud $INSTANCE_NAME creada con éxito."
+
+      - name: Get External IP of the Google Cloud Instance
+        run: |
+          INSTANCE_NAME="packer-instance-$(date +%Y%m%d)"
+          EXTERNAL_IP=$(gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a --format="get(networkInterfaces[0].accessConfigs[0].natIP)")
+
+          echo "La IP externa de la instancia de Google Cloud es: $EXTERNAL_IP"
+
+  deploy-instance-aws:
+    needs: build-images
     runs-on: ubuntu-latest
     environment: aws
 
@@ -65,6 +125,7 @@ jobs:
 
       - name: Launch EC2 Instance
         run: |
+          # Obtener la ID de la imagen de AWS
           AMI_ID=$(aws ec2 describe-images --filters "Name=name,Values=packer-node-nginx-*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
           DEFAULT_SUBNET=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[0].SubnetId" --output text)
 
@@ -84,4 +145,4 @@ jobs:
           # Obtener la IP pública de la instancia
           PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
 
-          echo "La IP pública de la instancia es: $PUBLIC_IP"
+          echo "La IP pública de la instancia EC2 es: $PUBLIC_IP"

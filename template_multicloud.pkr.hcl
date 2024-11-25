@@ -4,9 +4,9 @@ packer {
       version = ">= 1.3.3"
       source  = "github.com/hashicorp/amazon"
     }
-    google = {
-      version = ">= 1.0.0"
-      source  = "github.com/hashicorp/google"
+    googlecompute = {
+      version = ">= 1.1.6"
+      source  = "github.com/hashicorp/googlecompute"
     }
   }
 }
@@ -19,6 +19,10 @@ variable "gcp_region" {
   default = "us-central1"
 }
 
+variable "gcp_zone" {
+  default = "us-central1-a"
+}
+
 variable "instance_type" {
   default = "t2.micro"
 }
@@ -28,7 +32,7 @@ variable "ami_id" {
   default = "ami-0866a3c8686eaeeba"
 }
 
-# Source para crear la imagen en AWS
+# Referencias a los archivos específicos para AWS y GCP
 source "amazon-ebs" "node_nginx_image_aws" {
   region                      = var.aws_region
   instance_type               = var.instance_type
@@ -38,10 +42,10 @@ source "amazon-ebs" "node_nginx_image_aws" {
   associate_public_ip_address = true
 }
 
-# Source para crear la imagen en Google Cloud
 source "googlecompute" "node_nginx_image_gcp" {
   project_id                 = "leafy-tuner-382618"  # Cambia por tu ID de proyecto en GCP
   region                     = var.gcp_region
+  zone                       = var.gcp_zone
   image_family               = "packer-node-nginx-gcp"
   image_name                 = "packer-node-nginx-gcp-{{timestamp}}"
   source_image               = "ubuntu-2404-noble-amd64-v20241115"  # Imagen de Ubuntu 24.04 en GCP
