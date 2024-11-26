@@ -3,7 +3,7 @@ name: Build and Deploy EC2 and Google Cloud VM with Packer
 on:
   push:
     branches:
-      - main
+      - mainn
 
 jobs:
   build-images:
